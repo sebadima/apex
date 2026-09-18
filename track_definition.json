@@ -1,0 +1,43 @@
+{
+  "track_name": "Circuito_Test_Alpha",
+  "waypoints": [
+    {
+      "id": 0,
+      "x_m": 0.0,
+      "y_m": 0.0,
+      "segment_type": "straight",
+      "surface": "asphalt",
+      "friction_base": 0.05,
+      "noise_amplitude": 0.01
+    },
+    {
+      "id": 1,
+      "x_m": 20.0,
+      "y_m": 0.0,
+      "segment_type": "corner_entry",
+      "radius_m": 6.0,
+      "surface": "grass",
+      "friction_base": 0.25,
+      "noise_amplitude": 0.15
+    },
+    {
+      "id": 2,
+      "x_m": 26.0,
+      "y_m": 6.0,
+      "segment_type": "hairpin",
+      "radius_m": 2.5,
+      "surface": "mud",
+      "friction_base": 0.45,
+      "noise_amplitude": 0.30
+    },
+    {
+      "id": 3,
+      "x_m": 26.0,
+      "y_m": 20.0,
+      "segment_type": "straight",
+      "surface": "asphalt",
+      "friction_base": 0.05,
+      "noise_amplitude": 0.01
+    }
+  ]
+}
