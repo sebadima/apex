@@ -1,0 +1,41 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# C / C++ compiled files & binaries
+*.o
+*.obj
+*.elf
+*.bin
+*.exe
+*.out
+
+# Environments & Virtual Envs
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+
+# Database locali e file di telemetria temporanei
+*.duckdb
+*.duckdb.wal
+*.sqlite3
+*.log
+
+# Editor e IDE (Vim, Neovim, Zed, VSCode)
+*.swp
+*.swo
+*~
+.netrwhist
+.zed/
+.vscode/
+.idea/
+
+# File di sistema e temporanei
+.DS_Store
+Thumbs.db
+*.tmp
