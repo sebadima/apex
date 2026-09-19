@@ -36,9 +36,11 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
     waypoints = track["waypoints"]
     num_wp = len(waypoints)
 
-    # Posizione iniziale
+    # Posizione iniziale 3D
     x_curr = waypoints[0]["x_m"]
     y_curr = waypoints[0]["y_m"]
+    z_curr = waypoints[0].get("z_m", 0.0)
+
     yaw_curr = 0.0
 
     while True:
@@ -49,40 +51,72 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
 
             x_target = wp_target["x_m"]
             y_target = wp_target["y_m"]
+            z_target = wp_target.get("z_m", 0.0)
 
+            # Differenza di posizione nello spazio 3D
             dx = x_target - x_curr
             dy = y_target - y_curr
+            dz = z_target - z_curr
 
-            dist = math.hypot(dx, dy)
+            dist = math.sqrt(
+                dx * dx +
+                dy * dy +
+                dz * dz
+            )
 
             if dist == 0:
                 continue
 
-            # Direzione verso il waypoint
+            # Direzione 3D normalizzata
             dir_x = dx / dist
             dir_y = dy / dist
+            dir_z = dz / dist
 
-            # Orientamento del robot
-            yaw_curr = math.atan2(dir_y, dir_x)
+            # Orientamento sul piano XY
+            yaw_curr = math.atan2(
+                dir_y,
+                dir_x
+            )
 
             r_m = wp_target.get("radius_m", None)
 
-            steps = int(dist / (speed_m_s * dt))
+            steps = int(
+                dist /
+                (speed_m_s * dt)
+            )
 
             for _ in range(steps):
 
                 # -------------------------------------------------
-                # MODELLO CINEMATICO
+                # MODELLO CINEMATICO 3D
                 # -------------------------------------------------
 
-                x_curr += dir_x * speed_m_s * dt
-                y_curr += dir_y * speed_m_s * dt
+                x_curr += (
+                    dir_x *
+                    speed_m_s *
+                    dt
+                )
+
+                y_curr += (
+                    dir_y *
+                    speed_m_s *
+                    dt
+                )
+
+                z_curr += (
+                    dir_z *
+                    speed_m_s *
+                    dt
+                )
 
                 # -------------------------------------------------
                 # MODELLO DI DISTURBO / ATTRITO
                 # -------------------------------------------------
 
-                b_noise = noise.get_sample() * wp_target["noise_amplitude"]
+                b_noise = (
+                    noise.get_sample() *
+                    wp_target["noise_amplitude"]
+                )
 
                 f_friction = (
                     wp_target["friction_base"] +
@@ -98,7 +132,8 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
                 if r_m and r_m > 0:
 
                     f_centripetal = (
-                        m_kg * (speed_m_s ** 2)
+                        m_kg *
+                        (speed_m_s ** 2)
                     ) / r_m
 
                     f_corner = (
@@ -112,7 +147,11 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
 
                 is_stuck = noise.check_obstacle_event(0.01)
 
-                f_obstacle = 2.0 if is_stuck else 0.0
+                f_obstacle = (
+                    2.0
+                    if is_stuck
+                    else 0.0
+                )
 
                 # -------------------------------------------------
                 # FORZA TOTALE
@@ -141,7 +180,10 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
                 voltage_v = max(
                     5.0,
                     v_bat_oc -
-                    (current_a * r_bat_int)
+                    (
+                        current_a *
+                        r_bat_int
+                    )
                 )
 
                 # -------------------------------------------------
@@ -169,6 +211,7 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
                 # current,
                 # x,
                 # y,
+                # z,
                 # yaw
                 # -------------------------------------------------
 
@@ -183,6 +226,7 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
                         f"{current_a:.2f},"
                         f"{x_curr:.2f},"
                         f"{y_curr:.2f},"
+                        f"{z_curr:.2f},"
                         f"{yaw_curr:.4f}"
                     )
 
@@ -196,6 +240,7 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
 
         x_curr = waypoints[0]["x_m"]
         y_curr = waypoints[0]["y_m"]
+        z_curr = waypoints[0].get("z_m", 0.0)
 
         if num_wp > 1:
 
@@ -209,7 +254,10 @@ def run_simulation(seed: int, publish_ipc: bool = False) -> tuple[float, float]:
                 waypoints[0]["y_m"]
             )
 
-            yaw_curr = math.atan2(dy, dx)
+            yaw_curr = math.atan2(
+                dy,
+                dx
+            )
 
 
 if __name__ == "__main__":

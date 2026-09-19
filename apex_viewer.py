@@ -1,6 +1,7 @@
 import json
 import math
 
+import numpy as np
 import open3d as o3d
 import zmq
 
@@ -9,7 +10,7 @@ IPC_ADDRESS = "ipc:///tmp/apex_telemetry.ipc"
 
 
 # ============================================================
-# Caricamento tracciato
+# CARICAMENTO TRACCIATO
 # ============================================================
 
 with open("track_definition.json", "r") as f:
@@ -18,13 +19,17 @@ with open("track_definition.json", "r") as f:
 waypoints = track["waypoints"]
 
 points = [
-    [wp["x_m"], wp["y_m"], 0.0]
+    [
+        wp["x_m"],
+        wp["y_m"],
+        wp.get("z_m", 0.0)
+    ]
     for wp in waypoints
 ]
 
 
 # ============================================================
-# ZeroMQ SUB
+# ZERO MQ
 # ============================================================
 
 context = zmq.Context()
@@ -35,7 +40,7 @@ socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
 
 # ============================================================
-# Open3D
+# OPEN3D
 # ============================================================
 
 vis = o3d.visualization.Visualizer()
@@ -48,7 +53,7 @@ vis.create_window(
 
 
 # ============================================================
-# Tracciato
+# TRACCIATO
 # ============================================================
 
 lines = [
@@ -61,13 +66,15 @@ line_set = o3d.geometry.LineSet(
     lines=o3d.utility.Vector2iVector(lines)
 )
 
-line_set.paint_uniform_color([0.75, 0.75, 0.75])
+line_set.paint_uniform_color(
+    [0.75, 0.75, 0.75]
+)
 
 vis.add_geometry(line_set)
 
 
 # ============================================================
-# Waypoints
+# WAYPOINT
 # ============================================================
 
 waypoint_cloud = o3d.geometry.PointCloud()
@@ -84,75 +91,278 @@ vis.add_geometry(waypoint_cloud)
 
 
 # ============================================================
-# Robot
+# TERRENO
 # ============================================================
 
-# Corpo principale
+min_x = min(p[0] for p in points)
+max_x = max(p[0] for p in points)
+
+min_y = min(p[1] for p in points)
+max_y = max(p[1] for p in points)
+
+margin = 8.0
+
+ground_width = (max_x - min_x) + margin * 2
+ground_depth = (max_y - min_y) + margin * 2
+
+ground = o3d.geometry.TriangleMesh.create_box(
+    width=ground_width,
+    height=ground_depth,
+    depth=0.05
+)
+
+ground.paint_uniform_color(
+    [0.18, 0.22, 0.18]
+)
+
+ground.translate([
+    min_x - margin,
+    min_y - margin,
+    -0.05
+])
+
+vis.add_geometry(ground)
+
+
+# ============================================================
+# PAESAGGIO
+# ============================================================
+
+def create_block(
+    x,
+    y,
+    z,
+    width,
+    depth,
+    height,
+    color
+):
+
+    block = o3d.geometry.TriangleMesh.create_box(
+        width=width,
+        height=depth,
+        depth=height
+    )
+
+    block.paint_uniform_color(color)
+
+    block.translate([
+        x - width / 2,
+        y - depth / 2,
+        z
+    ])
+
+    block.compute_vertex_normals()
+
+    return block
+
+
+landscape_objects = [
+
+    create_block(
+        min_x - 2.0,
+        min_y + 4.0,
+        0.0,
+        2.0,
+        2.0,
+        1.5,
+        [0.25, 0.30, 0.25]
+    ),
+
+    create_block(
+        max_x + 2.0,
+        min_y + 8.0,
+        0.0,
+        2.5,
+        2.5,
+        2.0,
+        [0.30, 0.28, 0.20]
+    ),
+
+    create_block(
+        min_x + 5.0,
+        max_y + 3.0,
+        0.0,
+        3.0,
+        2.0,
+        1.0,
+        [0.22, 0.28, 0.22]
+    )
+]
+
+for obj in landscape_objects:
+    vis.add_geometry(obj)
+
+
+# ============================================================
+# MACCHINA
+# ============================================================
+
+robot_parts = []
+
+
+# ------------------------------------------------------------
+# Corpo
+# ------------------------------------------------------------
+
 body = o3d.geometry.TriangleMesh.create_box(
-    width=0.40,
-    height=0.20,
-    depth=0.10
+    width=0.90,
+    height=0.48,
+    depth=0.18
 )
 
 body.paint_uniform_color(
-    [0.15, 0.65, 0.20]
+    [0.12, 0.55, 0.18]
 )
 
-# Il centro del robot deve coincidere con (0, 0, 0)
 body.translate([
-    -0.20,
-    -0.10,
-    0.05
+    -0.45,
+    -0.24,
+    0.20
 ])
+
+body.compute_vertex_normals()
+
+robot_parts.append(body)
 
 
 # ------------------------------------------------------------
-# Parte superiore / cabina
+# Cabina
 # ------------------------------------------------------------
 
 cabin = o3d.geometry.TriangleMesh.create_box(
-    width=0.20,
-    height=0.14,
-    depth=0.10
+    width=0.45,
+    height=0.38,
+    depth=0.28
 )
 
 cabin.paint_uniform_color(
-    [0.10, 0.30, 0.12]
+    [0.08, 0.16, 0.10]
 )
 
 cabin.translate([
-    -0.10,
-    -0.07,
-    0.15
+    -0.20,
+    -0.19,
+    0.38
 ])
 
+cabin.compute_vertex_normals()
+
+robot_parts.append(cabin)
+
 
 # ------------------------------------------------------------
-# Indicatore anteriore
+# Cofano
 # ------------------------------------------------------------
 
-nose = o3d.geometry.TriangleMesh.create_box(
-    width=0.08,
-    height=0.12,
-    depth=0.06
+hood = o3d.geometry.TriangleMesh.create_box(
+    width=0.30,
+    height=0.44,
+    depth=0.12
 )
 
-nose.paint_uniform_color(
-    [1.0, 0.25, 0.05]
+hood.paint_uniform_color(
+    [0.16, 0.62, 0.20]
 )
 
-nose.translate([
+hood.translate([
     0.20,
-    -0.06,
-    0.02
+    -0.22,
+    0.29
 ])
 
+hood.compute_vertex_normals()
+
+robot_parts.append(hood)
+
 
 # ------------------------------------------------------------
-# Uniamo i triangoli delle tre parti
+# Paraurti
 # ------------------------------------------------------------
 
-robot = body + cabin + nose
+bumper = o3d.geometry.TriangleMesh.create_box(
+    width=0.08,
+    height=0.50,
+    depth=0.12
+)
+
+bumper.paint_uniform_color(
+    [0.05, 0.05, 0.05]
+)
+
+bumper.translate([
+    0.45,
+    -0.25,
+    0.17
+])
+
+bumper.compute_vertex_normals()
+
+robot_parts.append(bumper)
+
+
+# ============================================================
+# RUOTE
+# ============================================================
+
+def create_wheel(x, y, z):
+
+    wheel = o3d.geometry.TriangleMesh.create_cylinder(
+        radius=0.13,
+        height=0.08,
+        resolution=20
+    )
+
+    wheel.paint_uniform_color(
+        [0.03, 0.03, 0.03]
+    )
+
+    rotation = wheel.get_rotation_matrix_from_xyz(
+        [math.pi / 2, 0.0, 0.0]
+    )
+
+    wheel.rotate(
+        rotation,
+        center=[0.0, 0.0, 0.0]
+    )
+
+    wheel.translate([
+        x,
+        y,
+        z
+    ])
+
+    wheel.compute_vertex_normals()
+
+    return wheel
+
+
+wheel_positions = [
+    [0.28,  0.29, 0.15],
+    [0.28, -0.29, 0.15],
+    [-0.30,  0.29, 0.15],
+    [-0.30, -0.29, 0.15]
+]
+
+for pos in wheel_positions:
+
+    wheel = create_wheel(
+        pos[0],
+        pos[1],
+        pos[2]
+    )
+
+    robot_parts.append(wheel)
+
+
+# ============================================================
+# MODELLO COMPLETO
+# ============================================================
+
+robot = robot_parts[0]
+
+for part in robot_parts[1:]:
+    robot += part
 
 robot.compute_vertex_normals()
 
@@ -160,11 +370,11 @@ vis.add_geometry(robot)
 
 
 # ============================================================
-# Frame del robot
+# FRAME
 # ============================================================
 
 robot_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
-    size=0.35,
+    size=0.45,
     origin=[0.0, 0.0, 0.0]
 )
 
@@ -172,50 +382,261 @@ vis.add_geometry(robot_frame)
 
 
 # ============================================================
-# Traiettoria percorsa
+# TRAIETTORIA
 # ============================================================
 
 trajectory_points = []
-
 trajectory_lines = []
 
 trajectory = o3d.geometry.LineSet()
+
+trajectory.paint_uniform_color(
+    [0.1, 0.8, 1.0]
+)
 
 vis.add_geometry(trajectory)
 
 
 # ============================================================
-# Stato iniziale
+# STATO ROBOT
 # ============================================================
 
 robot_initialized = False
 
 current_x = 0.0
 current_y = 0.0
+current_z = 0.0
 current_yaw = 0.0
 
 
 # ============================================================
-# Funzione aggiornamento robot
+# CAMERA
 # ============================================================
 
-def update_robot(x, y, yaw):
+camera_parameters = None
+camera_initialized = False
+
+
+# ============================================================
+# CAMERA FOLLOW
+# ============================================================
+
+def update_camera():
+
+    global camera_parameters
+    global camera_initialized
+
+    ctr = vis.get_view_control()
+
+    # --------------------------------------------------------
+    # PARAMETRI CAMERA
+    #
+    # La posizione è definita nel mondo APEX.
+    #
+    # La macchina guarda lungo il proprio asse +X.
+    # --------------------------------------------------------
+
+    forward = np.array([
+        math.cos(current_yaw),
+        math.sin(current_yaw),
+        0.0
+    ], dtype=float)
+
+    world_up = np.array([
+        0.0,
+        0.0,
+        1.0
+    ], dtype=float)
+
+    # --------------------------------------------------------
+    # POSIZIONE CAMERA
+    #
+    # 2.2 m dietro
+    # 0.9 m sopra
+    # --------------------------------------------------------
+
+    eye = np.array([
+        current_x,
+        current_y,
+        current_z
+    ], dtype=float)
+
+    eye = (
+        eye
+        - forward * 2.2
+        + world_up * 0.9
+    )
+
+    # --------------------------------------------------------
+    # PUNTO OSSERVATO
+    #
+    # Guardiamo 1.0 m davanti alla macchina,
+    # circa all'altezza del corpo.
+    # --------------------------------------------------------
+
+    target = np.array([
+        current_x,
+        current_y,
+        current_z + 0.30
+    ], dtype=float)
+
+    target = target + forward * 1.0
+
+    # --------------------------------------------------------
+    # ASSE Z CAMERA = DIREZIONE DI VISTA
+    # --------------------------------------------------------
+
+    camera_forward = target - eye
+
+    forward_length = np.linalg.norm(
+        camera_forward
+    )
+
+    if forward_length < 1e-9:
+        return
+
+    camera_forward /= forward_length
+
+    # --------------------------------------------------------
+    # ASSE X CAMERA = DESTRA
+    #
+    # right = forward × up
+    # --------------------------------------------------------
+
+    camera_right = np.cross(
+        camera_forward,
+        world_up
+    )
+
+    right_length = np.linalg.norm(
+        camera_right
+    )
+
+    if right_length < 1e-9:
+        return
+
+    camera_right /= right_length
+
+    # --------------------------------------------------------
+    # ASSE Y CAMERA = DOWN
+    #
+    # Open3D pinhole camera:
+    #
+    # X = destra
+    # Y = basso
+    # Z = avanti
+    # --------------------------------------------------------
+
+    camera_down = np.cross(
+        camera_right,
+        camera_forward
+    )
+
+    down_length = np.linalg.norm(
+        camera_down
+    )
+
+    if down_length < 1e-9:
+        return
+
+    camera_down /= down_length
+
+    # --------------------------------------------------------
+    # MATRICE ROTAZIONE WORLD -> CAMERA
+    # --------------------------------------------------------
+
+    rotation = np.array([
+        camera_right,
+        camera_down,
+        camera_forward
+    ])
+
+    # --------------------------------------------------------
+    # EXTRINSIC
+    #
+    # Open3D usa una trasformazione
+    #
+    # X_camera = R * X_world + t
+    #
+    # quindi:
+    #
+    # t = -R * camera_position
+    # --------------------------------------------------------
+
+    extrinsic = np.eye(4)
+
+    extrinsic[:3, :3] = rotation
+
+    extrinsic[:3, 3] = -rotation @ eye
+
+    # --------------------------------------------------------
+    # PRIMA VOLTA:
+    #
+    # prendiamo gli intrinseci generati da Open3D.
+    #
+    # NON tocchiamo focal length / principal point.
+    # --------------------------------------------------------
+
+    if camera_parameters is None:
+
+        camera_parameters = (
+            ctr.convert_to_pinhole_camera_parameters()
+        )
+
+    camera_parameters.extrinsic = extrinsic
+
+    # --------------------------------------------------------
+    # APPLICA LA CAMERA
+    #
+    # allow_arbitrary=True è importante:
+    # la posa non viene ricondotta al vecchio modello
+    # orbitale del ViewControl.
+    # --------------------------------------------------------
+
+    success = ctr.convert_from_pinhole_camera_parameters(
+        camera_parameters,
+        allow_arbitrary=True
+    )
+
+    if not success:
+
+        print(
+            "ATTENZIONE: impossibile aggiornare "
+            "la camera Open3D."
+        )
+
+
+# ============================================================
+# AGGIORNAMENTO ROBOT
+# ============================================================
+
+def update_robot(
+    x,
+    y,
+    z,
+    yaw
+):
 
     global current_x
     global current_y
+    global current_z
     global current_yaw
-
-    # --------------------------------------------------------
-    # Trasformazione rispetto alla posizione precedente
-    # --------------------------------------------------------
 
     dx = x - current_x
     dy = y - current_y
+    dz = z - current_z
 
     dyaw = yaw - current_yaw
 
+    while dyaw > math.pi:
+        dyaw -= 2.0 * math.pi
+
+    while dyaw < -math.pi:
+        dyaw += 2.0 * math.pi
+
+
     # --------------------------------------------------------
-    # Rotazione attorno al centro
+    # ROTAZIONE
     # --------------------------------------------------------
 
     if abs(dyaw) > 0.000001:
@@ -226,48 +647,48 @@ def update_robot(x, y, yaw):
 
         robot.rotate(
             rotation,
-            center=[current_x, current_y, 0.05]
+            center=[
+                current_x,
+                current_y,
+                current_z
+            ]
         )
-
-    # --------------------------------------------------------
-    # Traslazione
-    # --------------------------------------------------------
-
-    robot.translate([
-        dx,
-        dy,
-        0.0
-    ])
-
-    # --------------------------------------------------------
-    # Frame del robot
-    # --------------------------------------------------------
-
-    if abs(dyaw) > 0.000001:
 
         robot_frame.rotate(
             rotation,
             center=[
                 current_x,
                 current_y,
-                0.0
+                current_z
             ]
         )
+
+
+    # --------------------------------------------------------
+    # TRASLAZIONE 3D
+    # --------------------------------------------------------
+
+    robot.translate([
+        dx,
+        dy,
+        dz
+    ])
 
     robot_frame.translate([
         dx,
         dy,
-        0.0
+        dz
     ])
 
+
     # --------------------------------------------------------
-    # Traiettoria
+    # TRAIETTORIA
     # --------------------------------------------------------
 
     trajectory_points.append([
         x,
         y,
-        0.012
+        z + 0.02
     ])
 
     if len(trajectory_points) >= 2:
@@ -291,28 +712,36 @@ def update_robot(x, y, yaw):
         [0.1, 0.8, 1.0]
     )
 
+
     # --------------------------------------------------------
-    # Aggiornamento geometrie
+    # OPEN3D
     # --------------------------------------------------------
 
     vis.update_geometry(robot)
     vis.update_geometry(robot_frame)
     vis.update_geometry(trajectory)
 
+
     # --------------------------------------------------------
-    # Stato
+    # STATO
     # --------------------------------------------------------
 
     current_x = x
     current_y = y
+    current_z = z
     current_yaw = yaw
 
 
-# ============================================================
-# Visualizzazione iniziale
-# ============================================================
+    # --------------------------------------------------------
+    # CAMERA
+    # --------------------------------------------------------
 
-vis.reset_view_point(True)
+    update_camera()
+
+
+# ============================================================
+# AVVIO
+# ============================================================
 
 print(
     "Visualizzatore 3D Open3D attivo "
@@ -321,7 +750,7 @@ print(
 
 
 # ============================================================
-# Loop
+# LOOP
 # ============================================================
 
 try:
@@ -330,10 +759,6 @@ try:
 
         if not vis.poll_events():
             break
-
-        # ----------------------------------------------------
-        # Ricezione ZeroMQ
-        # ----------------------------------------------------
 
         try:
 
@@ -346,47 +771,44 @@ try:
             vis.update_renderer()
             continue
 
-        # ----------------------------------------------------
-        # Parsing
-        # ----------------------------------------------------
 
         parts = raw_msg.split(",")
 
-        if len(parts) >= 7:
+        if len(parts) >= 8:
 
             try:
 
                 x_pos = float(parts[4])
                 y_pos = float(parts[5])
-                yaw = float(parts[6])
+                z_pos = float(parts[6])
+                yaw = float(parts[7])
 
             except ValueError:
 
                 continue
 
+
             # ------------------------------------------------
-            # Primo messaggio
+            # PRIMO MESSAGGIO
             # ------------------------------------------------
 
             if not robot_initialized:
 
-                # Spostiamo direttamente il robot
-                # nella posizione iniziale.
-
                 robot.translate([
                     x_pos,
                     y_pos,
-                    0.0
+                    z_pos
                 ])
 
                 robot_frame.translate([
                     x_pos,
                     y_pos,
-                    0.0
+                    z_pos
                 ])
 
                 current_x = x_pos
                 current_y = y_pos
+                current_z = z_pos
                 current_yaw = yaw
 
                 robot_initialized = True
@@ -394,23 +816,34 @@ try:
                 trajectory_points.append([
                     x_pos,
                     y_pos,
-                    0.012
+                    z_pos + 0.02
                 ])
+
+                # ------------------------------------------------
+                # CAMERA INIZIALE
+                # ------------------------------------------------
+
+                update_camera()
+
 
             else:
 
                 update_robot(
                     x_pos,
                     y_pos,
+                    z_pos,
                     yaw
                 )
+
 
         vis.update_renderer()
 
 
 except KeyboardInterrupt:
 
-    print("\nVisualizzatore 3D chiuso.")
+    print(
+        "\nVisualizzatore 3D chiuso."
+    )
 
 
 finally:
