@@ -28,6 +28,10 @@ ax.set_ylabel("Y (metri)")
 ax.grid(True)
 ax.legend()
 
+# Etichetta di testo dinamica per i dati di telemetria in tempo reale
+info_text = ax.text(0.02, 0.95, "", transform=ax.transAxes, fontsize=10,
+                    verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
 print("Visualizzatore Percorso attivo [In ascolto su IPC...]")
 
 try:
@@ -38,11 +42,15 @@ try:
         # Formato payload: timestamp, vehicle_id, voltage, current, pos_x, pos_y
         if len(parts) >= 6:
             v_bat = float(parts[2])
+            i_bat = float(parts[3])
             x_pos = float(parts[4])
             y_pos = float(parts[5])
 
             # Aggiorna la posizione del pallino sulla mappa
             vehicle_dot.set_data([x_pos], [y_pos])
+
+            # Aggiorna il testo con i valori istantanei della telemetria
+            info_text.set_text(f"Tensione: {v_bat:.2f} V\nCorrente: {i_bat:.2f} A\nPos: ({x_pos:.1f}, {y_pos:.1f})m")
 
             # Se la tensione scende sotto la soglia di warning, cambia colore in arancione/rosso
             if v_bat <= 6.6:
