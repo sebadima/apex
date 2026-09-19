@@ -1,0 +1,12 @@
+<mujoco model="apex_track">
+    <compiler angle="radian" coordinate="local"/>
+    <option gravity="0 0 -9.81" timestep="0.02" integrator="RK4"/>
+    <worldbody>
+        <geom name="floor" type="plane" size="50 50 0.1" rgba="0.2 0.2 0.2 1" friction="0.8 0.1 0.1"/>
+        <body name="apex_vehicle" pos="0 0 0.05">
+            <freejoint name="root"/>
+            <inertial pos="0 0 0" mass="1.5" diaginertia="0.01 0.01 0.02"/>
+            <geom name="chassis" type="box" size="0.2 0.1 0.05" rgba="0 0.8 0 1"/>
+        </body>
+    </worldbody>
+</mujoco>

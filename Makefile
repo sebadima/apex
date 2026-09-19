@@ -1,4 +1,4 @@
-.PHONY: all run batch graph clean clean_ipc help
+.PHONY: all run batch graph graph3d clean clean_ipc help
 
 all: batch
 
@@ -22,6 +22,21 @@ graph:
 	@echo "=========================================================="
 	@python3 track_visualizer.py
 
+graph3d: clean_ipc
+	@echo "=========================================================="
+	@echo "APEX 3D - simulatore + visualizzatore"
+	@echo "=========================================================="
+	@echo "Avvio apex_simulator.py..."
+	@python3 apex_simulator.py 42 & \
+	SIM_PID=$$!; \
+	trap 'kill $$SIM_PID 2>/dev/null || true; wait $$SIM_PID 2>/dev/null || true' INT TERM EXIT; \
+	echo "Avvio apex_viewer.py..."; \
+	python3 apex_viewer.py; \
+	STATUS=$$?; \
+	kill $$SIM_PID 2>/dev/null || true; \
+	wait $$SIM_PID 2>/dev/null || true; \
+	exit $$STATUS
+
 clean_ipc:
 	@rm -f /tmp/apex_*.ipc
 
@@ -34,4 +49,4 @@ clean: clean_ipc
 	@echo "Ambiente azzerato. Processi annientati."
 
 help:
-	@echo "make batch | make run | make graph | make clean"
+	@echo "make batch | make run | make graph | make graph3d | make clean"

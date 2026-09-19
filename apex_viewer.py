@@ -1,5 +1,6 @@
 import json
 import math
+import signal
 
 import numpy as np
 import open3d as o3d
@@ -7,6 +8,31 @@ import zmq
 
 
 IPC_ADDRESS = "ipc:///tmp/apex_telemetry.ipc"
+
+
+# ============================================================
+# CONTROLLO INTERRUZIONE
+# ============================================================
+
+running = True
+
+
+def handle_sigint(signum, frame):
+
+    global running
+
+    print(
+        "\nCTRL+C ricevuto. "
+        "Chiusura del visualizzatore..."
+    )
+
+    running = False
+
+
+signal.signal(
+    signal.SIGINT,
+    handle_sigint
+)
 
 
 # ============================================================
@@ -414,7 +440,6 @@ current_yaw = 0.0
 # ============================================================
 
 camera_parameters = None
-camera_initialized = False
 
 
 # ============================================================
@@ -424,14 +449,11 @@ camera_initialized = False
 def update_camera():
 
     global camera_parameters
-    global camera_initialized
 
     ctr = vis.get_view_control()
 
     # --------------------------------------------------------
     # PARAMETRI CAMERA
-    #
-    # La posizione è definita nel mondo APEX.
     #
     # La macchina guarda lungo il proprio asse +X.
     # --------------------------------------------------------
@@ -470,8 +492,8 @@ def update_camera():
     # --------------------------------------------------------
     # PUNTO OSSERVATO
     #
-    # Guardiamo 1.0 m davanti alla macchina,
-    # circa all'altezza del corpo.
+    # 1.0 m davanti alla macchina,
+    # all'altezza del corpo.
     # --------------------------------------------------------
 
     target = np.array([
@@ -483,7 +505,7 @@ def update_camera():
     target = target + forward * 1.0
 
     # --------------------------------------------------------
-    # ASSE Z CAMERA = DIREZIONE DI VISTA
+    # DIREZIONE DI VISTA
     # --------------------------------------------------------
 
     camera_forward = target - eye
@@ -499,8 +521,6 @@ def update_camera():
 
     # --------------------------------------------------------
     # ASSE X CAMERA = DESTRA
-    #
-    # right = forward × up
     # --------------------------------------------------------
 
     camera_right = np.cross(
@@ -518,18 +538,27 @@ def update_camera():
     camera_right /= right_length
 
     # --------------------------------------------------------
-    # ASSE Y CAMERA = DOWN
+    # ASSE Y CAMERA = BASSO
     #
-    # Open3D pinhole camera:
+    # Convenzione pinhole:
     #
     # X = destra
     # Y = basso
     # Z = avanti
+    #
+    # Con:
+    #
+    # forward = +X mondo
+    # world_up = +Z mondo
+    #
+    # il verso corretto di DOWN è:
+    #
+    # forward × right
     # --------------------------------------------------------
 
     camera_down = np.cross(
-        camera_right,
-        camera_forward
+        camera_forward,
+        camera_right
     )
 
     down_length = np.linalg.norm(
@@ -554,11 +583,7 @@ def update_camera():
     # --------------------------------------------------------
     # EXTRINSIC
     #
-    # Open3D usa una trasformazione
-    #
     # X_camera = R * X_world + t
-    #
-    # quindi:
     #
     # t = -R * camera_position
     # --------------------------------------------------------
@@ -570,11 +595,7 @@ def update_camera():
     extrinsic[:3, 3] = -rotation @ eye
 
     # --------------------------------------------------------
-    # PRIMA VOLTA:
-    #
-    # prendiamo gli intrinseci generati da Open3D.
-    #
-    # NON tocchiamo focal length / principal point.
+    # INTRINSECI OPEN3D
     # --------------------------------------------------------
 
     if camera_parameters is None:
@@ -587,23 +608,12 @@ def update_camera():
 
     # --------------------------------------------------------
     # APPLICA LA CAMERA
-    #
-    # allow_arbitrary=True è importante:
-    # la posa non viene ricondotta al vecchio modello
-    # orbitale del ViewControl.
     # --------------------------------------------------------
 
-    success = ctr.convert_from_pinhole_camera_parameters(
+    ctr.convert_from_pinhole_camera_parameters(
         camera_parameters,
         allow_arbitrary=True
     )
-
-    if not success:
-
-        print(
-            "ATTENZIONE: impossibile aggiornare "
-            "la camera Open3D."
-        )
 
 
 # ============================================================
@@ -755,7 +765,7 @@ print(
 
 try:
 
-    while True:
+    while running:
 
         if not vis.poll_events():
             break
@@ -818,10 +828,6 @@ try:
                     y_pos,
                     z_pos + 0.02
                 ])
-
-                # ------------------------------------------------
-                # CAMERA INIZIALE
-                # ------------------------------------------------
 
                 update_camera()
 
