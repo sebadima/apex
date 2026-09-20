@@ -1,41 +1,77 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
+# ==========================================
+# Build System & Artefatti C/C++
+# ==========================================
+# Directory di build di CMake
+build/
+bin/
+lib/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
 
-# C / C++ compiled files & binaries
+# Compilati e binari
 *.o
 *.obj
 *.elf
 *.bin
 *.exe
 *.out
+*.a
+*.so
+*.dylib
+*.dll
+*.gch
+*.pch
 
-# Environments & Virtual Envs
-.venv/
-venv/
-env/
-ENV/
-build/
-dist/
-
-# Database locali e file di telemetria temporanei
-*.duckdb
-*.duckdb.wal
-*.sqlite3
-*.log
-
-# Editor e IDE (Vim, Neovim, Zed, VSCode)
+# ==========================================
+# Editor, IDE e Strumenti di Sviluppo
+# ==========================================
+# Vim / Neovim
 *.swp
 *.swo
 *~
 .netrwhist
+tags
+
+# ZED Editor
 .zed/
-.vscode/
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# CLion / JetBrains
 .idea/
 
-# File di sistema e temporanei
+# ==========================================
+# Ambiente Python & Virtual Envs
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+dist/
+*.egg-info/
+
+# ==========================================
+# Database locali, log e temporanei
+# ==========================================
+*.duckdb
+*.duckdb.wal
+*.sqlite3
+*.log
+*.tmp
+
+# ==========================================
+# OS & File di Sistema
+# ==========================================
 .DS_Store
 Thumbs.db
-*.tmp
